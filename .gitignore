@@ -1,0 +1,6 @@
+note*
+node_modules*
+dist*
+vendor*
+.env
+temp*
