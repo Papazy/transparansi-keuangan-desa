@@ -102,6 +102,7 @@
     animation: scroll-in 3s forwards;
   }
 
+
   @keyframes scroll-in {
     0% {
       opacity: 0;
@@ -443,10 +444,10 @@
   function obCallback(entries, observer){
     entries.filter((e) => e.isIntersecting).forEach((entry) => {
       entry.target.classList.add('transitionIn');
-      // entry.target.classList.remove('watch');
       observer.unobserve(entry.target);
     })
   }
+
 
   let ob = new IntersectionObserver(obCallback);
   watchs.forEach(watch => {

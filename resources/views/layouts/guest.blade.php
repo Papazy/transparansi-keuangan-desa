@@ -124,7 +124,7 @@
           <!-- Right Side Of Navbar -->
           <ul class="navbar-nav ml-auto d-flex align-items-center" style="color: white;">
             <li class="nav-item mr-4">
-              <a class="nav-link" href="{{ route('login') }}" style="color: white;">Beranda</a>
+              <a class="nav-link" href="/" style="color: white;">Beranda</a>
             </li>
             <li class="nav-item mr-4">
               <div class="nav-link"  style="color: white; ">Anggaran</div>
@@ -132,7 +132,7 @@
                 <li class="submenu-category">
                   <span class="category-title">Rincian Anggaran</span>
                   <ul>
-                    <li><a href="#">Belanja</a></li>
+                    <li><a href="/rincian">Belanja</a></li>
                     <li><a href="#">Bidang</a></li>
                     <li><a href="#">Kegiatan</a></li>
                   </ul>
