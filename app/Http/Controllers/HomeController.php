@@ -28,61 +28,75 @@ class HomeController extends Controller
      * @return \Illuminate\Contracts\Support\Renderable
      */
     public function index()
-{
-    $user = auth()->user();
+    {
+        $user = auth()->user();
 
-    // Ambil tahun sekarang jika tidak ada filter tahun
-    $tahun = request('tahun', date('Y'));
 
-    // Ambil data pendapatan desa dari tabel penganggaran_pendapatan
-    $pendapatanDesa = PenganggaranPendapatan::whereHas('penganggaranTahun', function ($query) use ($tahun) {
-        $query->where('tahun', $tahun);
-    })->get();
 
-    dd($pendapatanDesa);
+        $pendapatanDesa = [
+            (object)[
+                "sumber_pendapatan" => "PAD",
+                "anggaran" => 100000000,
+                "realisasi" => 90000000
+            ],
+            (object)[
+                "sumber_pendapatan" => "Alokasi Dana Desa (ADD)",
+                "anggaran" => 200000000,
+                "realisasi" => 80000000
+            ],
+            (object)[
+                "sumber_pendapatan" => "Dana Desa",
+                "anggaran" => 500000000,
+                "realisasi" => 410000000
+            ],
+            (object)[
+                "sumber_pendapatan" => "Bantuan Provinsi",
+                "anggaran" => 200000000,
+                "realisasi" => 150000000
+            ]
+        ];
 
-    // Ambil data realisasi anggaran dari tabel penganggaran_belanja
-    $realisasiAnggaran = PenganggaranBelanja::whereHas('penganggaranTahun', function ($query) use ($tahun) {
-        $query->where('tahun', $tahun);
-    })->get();
 
-    // Hitung total anggaran dan realisasi
-    $totalPaguAnggaran = $pendapatanDesa->sum('harga_satuan');
-    $totalRealisasi = $realisasiAnggaran->sum('harga_satuan');
+        $totalPaguAnggaran = 0;
+        $totalRealisasi = 0;
+        foreach ($pendapatanDesa as $pendapatan) {
+            $totalPaguAnggaran += $pendapatan->anggaran;
+            $totalRealisasi += $pendapatan->realisasi;
+        }
 
-    // Hitung persentase realisasi
-    $persentaseRealisasi = ($totalPaguAnggaran > 0) ? ($totalRealisasi / $totalPaguAnggaran) * 100 : 0;
+        $persentaseRealisasi = ($totalRealisasi / $totalPaguAnggaran) * 100;
 
-    // Ambil data total anggaran dan realisasi per tahun dari tabel penganggaran_tahun
-    $totalAnggaranRealiasiPerTahun = PenganggaranTahun::with(['pendapatan', 'belanja'])
-        ->get()
-        ->map(function ($tahun) {
-            return (object)[
-                'tahun' => $tahun->tahun,
-                'total_anggaran' => $tahun->pendapatan->sum('harga_satuan'),
-                'total_realisasi' => $tahun->belanja->sum('harga_satuan')
-            ];
-        });
+        $totalAnggaranRealiasiPerTahun = [
+            (object)[
+                "tahun" => 2018,
+                "total_anggaran" => 1000000000,
+                "total_realisasi" => 900000000
+            ],
+            (object)[
+                "tahun" => 2019,
+                "total_anggaran" => 1500000000,
+                "total_realisasi" => 1400000000
+            ],
+            (object)[
+                "tahun" => 2020,
+                "total_anggaran" => 2000000000,
+                "total_realisasi" => 1900000000
+            ]
+        ];
 
-        // dd($pendapatanDesa);
 
-    // Format data untuk dikirim ke view
-    $data = (object)[
-        "totalPaguAnggaran" => $totalPaguAnggaran,
-        "totalRealisasi" => $totalRealisasi,
-        "persentaseRealisasi" => $persentaseRealisasi,
-        "pendapatanDesa" => $pendapatanDesa,
-        "totalAnggaranRealiasiPerTahun" => $totalAnggaranRealiasiPerTahun
-    ];
-
-    // Redirect ke dashboard jika user sudah login
-    if ($user) {
-        return view('dashboard');
+        $data = (object)[
+            "totalPaguAnggaran" => $totalPaguAnggaran,
+            "totalRealisasi" => $totalRealisasi,
+            "persentaseRealisasi" => $persentaseRealisasi,
+            "pendapatanDesa" => $pendapatanDesa,
+            "totalAnggaranRealiasiPerTahun" => $totalAnggaranRealiasiPerTahun
+        ];
+        if ($user) {
+            return view('dashboard');
+        }
+        return view('home', compact('data'));
     }
-
-    // Tampilkan data ke view home
-    return view('home', compact('data', 'tahun'));
-}
 
     public function anggaranPendapatan(Request $request)
     {
