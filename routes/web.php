@@ -40,6 +40,7 @@ use App\Http\Controllers\SekretarisDesaController;
 use App\Http\Controllers\SubBidangController;
 use App\Http\Controllers\SumberDanaController;
 use App\Http\Controllers\UserController;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -54,12 +55,35 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', [App\Http\Controllers\HomeController::class, 'index']);
-Route::get('/rincian', [App\Http\Controllers\HomeController::class, 'rincian']);
+Route::get('/anggaran/{tahun}/belanja', [App\Http\Controllers\HomeController::class, 'anggaranBelanja'])->name('anggaran.belanja');
+Route::get('/anggaran/{tahun}/pendapatan', [App\Http\Controllers\HomeController::class, 'anggaranPendapatan'])->name('anggaran.pendapatan');
+
+Route::get('/pembiayaan/{tahun}/belanja', [App\Http\Controllers\HomeController::class, 'pembiayaanBelanja'])->name('pembiayaan.belanja');
+Route::get('/pembiayaan/{tahun}/pendapatan', [App\Http\Controllers\HomeController::class, 'pembiayaanPendapatan'])->name('pembiayaan.pendapatan');
+
+Route::get('/anggaran/{tahun}/belanja/detail/{rekeningObjek}', [App\Http\Controllers\HomeController::class, 'detailAnggaranBelanja'])->name('anggaran.belanja.detail');
+Route::get('/anggaran/{tahun}/pendapatan/detail/{rekeningObjek}', [App\Http\Controllers\HomeController::class, 'detailAnggaranpendapatan'])->name('anggaran.pendapatan.detail');
+
+Route::get('/pembiayaan/{tahun}/belanja/detail/{rekeningObjek}', [App\Http\Controllers\HomeController::class, 'detailPembiayaanBelanja'])->name('pembiayaan.belanja.detail');
+Route::get('/pembiayaan/{tahun}/pendapatan/detail/{rekeningObjek}', [App\Http\Controllers\HomeController::class, 'detailPembiayaanpendapatan'])->name('pembiayaan.pendapatan.detail');
+
+// Kegiatan
+Route::get('/anggaran/{tahun}/kegiatan', [App\Http\Controllers\HomeController::class, 'anggaranKegiatan'])->name('anggaran.kegiatan');
+
+
+// redirect
+Route::get('/anggaran', function () {
+    return redirect('/anggaran/' . Carbon::now()->year . '/belanja');
+});
+Route::get('/anggaran/{tahun}', function ($tahun) {
+    return redirect('/anggaran/' . $tahun . '/belanja');
+});
 
 
 Auth::routes(['register' => false]);
 
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+Route::get("/about", [App\Http\Controllers\HomeController::class, 'about'])->name('about');
 
 Route::middleware(['auth'])->prefix('master')->group(function () {
 

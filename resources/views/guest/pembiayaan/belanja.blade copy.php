@@ -1,11 +1,57 @@
 @extends('layouts.guest')
 
+
+<style>
+    .form-select {
+    width: 100%;
+    max-width: 100px;
+    padding: 8px 12px;
+    font-size: 16px;
+    color: #333;
+    background-color: #fff;
+    border: 2px solid #007bff;
+    border-radius: 8px;
+    outline: none;
+    transition: all 0.3s ease-in-out;
+    cursor: pointer;
+}
+
+.form-select:hover {
+    border-color: #0056b3;
+}
+
+.form-select:focus {
+    border-color: #0056b3;
+    box-shadow: 0 0 8px rgba(0, 91, 187, 0.5);
+}
+
+.form-select option {
+    padding: 10px;
+    background: #fff;
+    color: #333;
+}
+
+.form-select option:checked {
+    background-color: #007bff;
+    color: white;
+    font-weight: bold;
+}
+
+</style>
 @section('content')
 <div class="container mt-5">
     <!-- Header Transparansi -->
     <div class="text-center mb-5">
-        <h1 class="font-weight-bold">Rincian Anggaran Desa</h1>
-        <p class="text-muted">Menyajikan informasi anggaran secara transparan untuk Desa Matang, Kota Bireun, Tahun Anggaran 2025</p>
+        <h1 class="font-weight-bold">Rincian Anggaran Belanja Desa</h1>
+        <p class="text-muted">Menyajikan informasi anggaran secara transparan untuk Desa Matang, Kota Bireun, Tahun Anggaran :</p>
+        {{-- filter dropdown tahun dengan default adalah tahun sekarang  --}}
+        <select class="form-select" id="tahun" onchange="window.location.href = '/anggaran/' + this.value">
+            @foreach($tahunAll as $item)
+                <option value="{{ $item }}" {{ $item == $tahunSelected ? 'selected' : '' }}>{{ $item }}</option>
+            @endforeach
+        </select>
+
+        
     </div>
 
     <!-- Tabel Anggaran -->
@@ -123,5 +169,7 @@
             }
         }
     });
+
+
 </script>
 @endsection

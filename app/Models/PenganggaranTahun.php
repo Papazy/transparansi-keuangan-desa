@@ -23,4 +23,14 @@ class PenganggaranTahun extends Model
     {
         return $this->belongsTo(Desa::class, 'id_desa');
     }
+
+    public function pendapatan()
+    {
+        return $this->hasMany(PenganggaranPendapatan::class, 'id_penganggaran_tahun');
+    }
+
+    public function belanja()
+    {
+        return $this->hasMany(PenganggaranBelanja::class, 'id_penganggaran_tahun');
+    }
 }

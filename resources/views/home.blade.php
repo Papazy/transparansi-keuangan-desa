@@ -236,7 +236,7 @@
   </table>
 
   <div class="">
-    <a href="/rincian" class="button button-info">> Lihat Penganggaran Sumber Dana</a>
+    <a href="{{ route('anggaran.pendapatan', ['tahun' => now()->year]) }}" class="button button-info">> Lihat Penganggaran Sumber Dana</a>
   </div>
 
   <!-- Chart -->
@@ -256,6 +256,46 @@
     </div>
   </div>
 </div>  
+
+{{-- Menampilkan list total anggaran dan realisasi pertahun --}}
+<div class="container mt-5">
+  <h1 class="text-center">Total Anggaran dan Realisasi Setiap Tahun</h1>
+  <table class="table table-bordered mt-4">
+    <thead class="" style="background: #70A6E8; color:white">
+      <tr>
+        <th>Tahun</th>
+        <th>Total Pagu Anggaran (Rp)</th>
+        <th>Total Realisasi (Rp)</th>
+        <th>Persentase (%)</th>
+      </tr>
+    </thead>
+    <tbody>
+      @foreach($data->totalAnggaranRealiasiPerTahun as $item)
+      <tr>
+        <td>{{ $item->tahun }}</td>
+        <td>{{ number_format($item->total_anggaran, 0, ',', '.') }}</td>
+        <td>{{ number_format($item->total_realisasi, 0, ',', '.') }}</td>
+        <td>{{ number_format($item->total_realisasi / $item->total_anggaran * 100, 1,'.','') }}%</td>
+      </tr>
+      @endforeach
+    </tbody>
+  </table>
+</div>
+
+{{-- bar chart  --}}
+
+<div class="container mt-5">
+  <h1 class="text-center subtitle my-5">Grafik Sumber Dana Desa Setiap Tahun</h1>
+  <div class="d-flex justify-content-center align-items-center mt-5">
+    <div class="" style="width:800px; margin-right: 20px">
+      <canvas id="chart-anggaran-desa-per-tahun"></canvas>
+    </div>
+    <div class="" style="width:800px; margin-left: 20px">
+      <canvas id="chart-realisasi-desa-per-tahun"></canvas>
+    </div>
+  </div>
+</div>
+
 
 
 
@@ -316,8 +356,8 @@
   // chart
   document.addEventListener('DOMContentLoaded', function() {
   var data = @json($data->pendapatanDesa);
-  const labels = data.map(item => item.sumber_pendapatan);
-  const anggaran = data.map(item => item.anggaran);
+  var labels = data.map(item => item.sumber_pendapatan);
+  var anggaran = data.map(item => item.anggaran);
   const realisasi = data.map(item => item.realisasi);
 
   const totalAnggaran = {{ $totalAnggaran }};  // Pastikan nilai totalAnggaran tersedia
@@ -434,6 +474,60 @@
       }
     }
   });
+
+  // barchart
+  var ctx = document.getElementById('chart-anggaran-desa-per-tahun').getContext('2d');
+  data = @json($data->totalAnggaranRealiasiPerTahun);
+  labels = data.map(item => item.tahun);
+  values = data.map(item => item.total_anggaran);
+  const backgroundColors = [
+    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
+  ];
+
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Total Anggaran',
+        data: values,
+        backgroundColor: backgroundColors,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'bottom'
+        }
+      }
+    }
+  });
+
+  values = data.map(item => item.total_realisasi);
+  var ctx = document.getElementById('chart-realisasi-desa-per-tahun').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Total Realisasi',
+        data: values,
+        backgroundColor: backgroundColors,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'bottom'
+        }
+      }
+    }
+  });
+
+
+
 });
 </script>
 

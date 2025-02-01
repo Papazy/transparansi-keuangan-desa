@@ -43,4 +43,9 @@ class PenganggaranPendapatan extends Model
     {
         return $this->belongsTo(PenganggaranTahun::class, 'id_penganggaran_tahun');
     }
+
+    public function penganggaranTahun()
+    {
+        return $this->belongsTo(PenganggaranTahun::class, 'id_penganggaran_tahun');
+    }
 }

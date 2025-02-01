@@ -132,30 +132,27 @@
                 <li class="submenu-category">
                   <span class="category-title">Rincian Anggaran</span>
                   <ul>
-                    <li><a href="/rincian">Belanja</a></li>
-                    <li><a href="#">Bidang</a></li>
-                    <li><a href="#">Kegiatan</a></li>
+                    <li><a href="{{ route('anggaran.belanja', ['tahun' => now()->year]) }}">Belanja</a></li>
+                    <li><a href="{{ route('anggaran.pendapatan', ['tahun' => now()->year]) }}">Pendapatan</a></li>
                   </ul>
                 </li>
                 <li class="submenu-category">
                   <span class="category-title">Realisasi Anggaran</span>
                   <ul>
-                    <li><a href="#">Belanja</a></li>
-                    <li><a href="#">Bidang</a></li>
-                    <li><a href="#">Kegiatan</a></li>
+                    <li><a href="{{ route('pembiayaan.belanja', ['tahun' => now()->year]) }}">Belanja</a></li>
+                    <li><a href="{{ route('pembiayaan.pendapatan', ['tahun' => now()->year]) }}">Pendapatan</a></li>
                   </ul>
                 </li>
-               
+                <li class="submenu-category">
+                  <span class="category-title">Kegiatan</span>
+                  <ul>
+                    <li><a href="{{ route('anggaran.kegiatan', ['tahun' => now()->year]) }}">Kegiatan</a></li>
+                  </ul>
+                </li>
               </ul>
             </li>
-            <li class="nav-item mr-4  ">
-              <a class="nav-link" href="{{ route('login') }}" style="color: white;">Menu 1</a>
-              {{-- create submenu --}}
-              <ul class="submenu" style="display: none;">
-                <li><a href="#">Submenu 1</a></li>
-                <li><a href="#">Submenu 2</a></li>
-                <li><a href="#">Submenu 3</a></li>
-              </ul>
+            <li class="nav-item mr-4">
+              <a class="nav-link" href="/about" style="color: white;">Tentang Desa</a>
             </li>
             <li class="nav-item login" style="border: 1px solid white; border-radius: 20px; padding: 2px 15px;">
               <a class="nav-link" href="{{ route('login') }}" style="color: white;">{{ __('auth.login') }}</a>
@@ -184,48 +181,45 @@
         <section class="mt-5">
           <!-- Grid row-->
           <div class="row text-center d-flex justify-content-center pt-5">
-            <!-- Grid column -->
-            <div class="col-md-2">
-              <h6 class="text-uppercase font-weight-bold">
-                <a href="#!" class="text-white">About us</a>
-              </h6>
-            </div>
-            <!-- Grid column -->
-
-            <!-- Grid column -->
-            <div class="col-md-2">
-              <h6 class="text-uppercase font-weight-bold">
-                <a href="#!" class="text-white">Products</a>
-              </h6>
-            </div>
-            <!-- Grid column -->
-
-            <!-- Grid column -->
-            <div class="col-md-2">
-              <h6 class="text-uppercase font-weight-bold">
-                <a href="#!" class="text-white">Awards</a>
-              </h6>
-            </div>
-            <!-- Grid column -->
-
-            <!-- Grid column -->
-            <div class="col-md-2">
-              <h6 class="text-uppercase font-weight-bold">
-                <a href="#!" class="text-white">Help</a>
-              </h6>
-            </div>
-            <!-- Grid column -->
-
-            <!-- Grid column -->
-            <div class="col-md-2">
-              <h6 class="text-uppercase font-weight-bold">
-                <a href="#!" class="text-white">Contact</a>
-              </h6>
-            </div>
-            <!-- Grid column -->
+              <!-- Grid column -->
+              <div class="col-md-2">
+                  <h6 class="text-uppercase font-weight-bold">
+                      <a href="#!" class="text-white">Beranda</a>
+                  </h6>
+              </div>
+              <!-- Grid column -->
+      
+              <div class="col-md-2">
+                  <h6 class="text-uppercase font-weight-bold">
+                      <a href="{{ route('anggaran.belanja', ['tahun' => now()->year]) }}" class="text-white">Anggaran</a>
+                  </h6>
+                  <ul class="list-unstyled">
+                      <li><a href="{{ route('anggaran.belanja', ['tahun' => now()->year]) }}" class="text-white">Belanja</a></li>
+                      <li><a href="{{ route('anggaran.pendapatan', ['tahun' => now()->year]) }}" class="text-white">Pendapatan</a></li>
+                  </ul>
+              </div>
+              <!-- Grid column -->
+      
+              <div class="col-md-2">
+                  <h6 class="text-uppercase font-weight-bold">
+                      <a href="{{ route('pembiayaan.belanja', ['tahun' => now()->year]) }}" class="text-white">Pembiayaan</a>
+                  </h6>
+                  <ul class="list-unstyled">
+                      <li><a href="{{ route('pembiayaan.belanja', ['tahun' => now()->year]) }}" class="text-white">Belanja</a></li>
+                      <li><a href="{{ route('pembiayaan.pendapatan', ['tahun' => now()->year]) }}" class="text-white">Pendapatan</a></li>
+                  </ul>
+              </div>
+              <!-- Grid column -->
+      
+              <div class="col-md-2">
+                  <h6 class="text-uppercase font-weight-bold">
+                      <a href="#!" class="text-white">Tentang Desa</a>
+                  </h6>
+              </div>
+              <!-- Grid column -->
           </div>
           <!-- Grid row-->
-        </section>
+      </section>
         <!-- Section: Links -->
 
         <hr class="my-5" />

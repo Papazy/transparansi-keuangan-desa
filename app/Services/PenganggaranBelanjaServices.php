@@ -11,7 +11,7 @@ class PenganggaranBelanjaServices
 
     public function __construct()
     {
-        $this->userDesaID = Auth::user()->desa->id;
+        $this->userDesaID = Auth::user()->desa->id ?? 'e956bd73-b5ec-491c-ab8f-7ec2b3e50404';
     }
 
     public function getDataTables($tahunAnggaran)

@@ -62,4 +62,9 @@ class PenganggaranBelanja extends Model
     {
         return $this->belongsTo(RekeningObjek::class, 'id_rekening_objek');
     }
+
+    public function penganggaranTahun()
+    {
+        return $this->belongsTo(PenganggaranTahun::class, 'id_penganggaran_tahun');
+    }
 }
