@@ -10,7 +10,7 @@
             <strong>{{ $rekeningObjek->nama }}</strong> ({{ $rekeningObjek->full_code }}), 
             Tahun Anggaran: <strong>{{ $tahunAnggaran->tahun }}</strong>
         </p>
-        <a href="{{ route('anggaran.belanja', ['tahun' => $tahunAnggaran->tahun]) }}" class="btn btn-primary">
+        <a href="{{ route('anggaran.belanja', ['tahun' => $tahunAnggaran->tahun, 'desa' => request('desa')hom]) }}" class="btn btn-primary">
             Kembali ke Halaman Utama
         </a>
     </div>

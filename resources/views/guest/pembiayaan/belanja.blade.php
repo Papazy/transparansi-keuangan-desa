@@ -86,7 +86,7 @@
         <h1 class="font-weight-bold">Rincian Anggaran Pembiayaan Belanja Desa</h1>
         <p class="text-muted">Menyajikan informasi anggaran secara transparan untuk Desa Matang, Kota Bireun, Tahun Anggaran :</p>
         {{-- Filter dropdown tahun --}}
-        <select class="form-select" id="tahun" onchange="window.location.href = '/pembiayaan/' + this.value + '/belanja'">
+        <select class="form-select" id="tahun" onchange="window.location.href = '/pembiayaan/' + this.value + '/belanja?desa=' + '{{ request('desa') }}'">
             @foreach($tahunAll as $tahun)
                 <option value="{{ $tahun }}" {{ $tahun == $tahunSelected ? 'selected' : '' }}>{{ $tahun }}</option>
             @endforeach
@@ -121,7 +121,7 @@
                             {{ number_format(($item->harga_satuan / $total) * 100, 2, ',', '.') }}%
                         </td>
                         <td class="text-center align-middle">
-                            <a href="{{ route('anggaran.belanja.detail', ['tahun' => $tahunSelected, 'rekeningObjek' => $item->rekening_objek->id]) }}" 
+                            <a href="{{ route('anggaran.belanja.detail', ['tahun' => $tahunSelected, 'rekeningObjek' => $item->rekening_objek->id, 'desa' => request('desa')]) }}" 
                                class="btn btn-sm btn-info">
                                 <i class="fas fa-eye"></i> Detail
                             </a>

@@ -121,6 +121,53 @@
 @endpush
 
 {{-- content --}}
+{{-- jika desa == null maka tampilkan modal untuuk pilih desa, jika tidak maka tampilkan yang dibawah --}}
+@if($desa == null)
+  <div class="" style="height: 100vh; display: flex; justify-content: center; align-items: center">
+    <div class="text-center">
+      <h1>Anda belum memilih desa</h1>
+      <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalPilihDesa">Pilih Desa</button>
+    </div>
+
+  </div>
+<div class="modal fade" id="modalPilihDesa" tabindex="-1" aria-labelledby="modalPilihDesaLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form action="{{ route('pilihDesa')}}" method="POST">
+        @csrf
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalPilihDesaLabel">Pilih Desa</h5>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="desa" class="form-label">Desa</label>
+            <select class="selectpicker form-control" name="desa" id="desa" required>
+              <option value="">Pilih Desa</option>
+              @foreach($listDesa as $item)
+              <option value="{{ $item->id }}">{{ $item->nama }}</option>
+              @endforeach
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary">Pilih</button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const modalPilihDesa = new bootstrap.Modal(document.getElementById('modalPilihDesa'), {
+      keyboard: false
+    });
+
+    modalPilihDesa.show();
+  })
+</script>
+@else
 <main class="headerContainer pb-5">
   <div class="container">
     <!-- Header -->
@@ -128,7 +175,7 @@
       <h4>Selamat Datang Di</h4>
       <div class="justify-content-center align-items-center">
         <h1 style="font-weight: 600">Sistem Keuangan Desa</h1>
-        <h4>Matang, Kota Bireun</h4>
+        <h4>{{ $daerah->nama }}, {{ $daerah->kabupaten_nama }}, Provinsi {{ $daerah->provinsi_nama }}</h4>
       </div>
     </div>
 
@@ -136,20 +183,20 @@
     <div class="row mt-4">
       <div class="col-md-4 mb-3">
         <div class="info-box transitionIn bg-primary text-white text-center p-3 rounded">
-          <h5>Jumlah Penduduk</h5>
-          <p class="h2">2,350</p>
+          <h5>Total Seluruh Anggaran</h5>
+          <p class="h2">Rp  {{ number_format($totalUang, 0,'.',',') }}</p>
         </div>
       </div>
       <div class="col-md-4 mb-3">
         <div class="info-box transitionIn bg-success text-white text-center p-3 rounded">
-          <h5>Proyek Aktif</h5>
-          <p class="h2">12</p>
+          <h5>Total Seluruh Kegiatan</h5>
+          <p class="h2">{{ $kegiatanCount }}</p>
         </div>
       </div>
       <div class="col-md-4 mb-3">
         <div class="info-box transitionIn bg-warning text-white text-center p-3 rounded">
           <h5>Laporan Keuangan</h5>
-          <p class="h2">5 Tahun</p>
+          <p class="h2">{{ $tahunCount }} Tahun</p>
         </div>
       </div>
     </div>
@@ -158,7 +205,7 @@
     <div class="row mt-2 pb-5">
       <div class="col-md-6 mb-3">
         <div class="text-center text-white transitionIn">
-          <h5>Total Pagu Anggaran 2025</h5>
+          <h5>Total Pagu Anggaran {{ now()->year }}</h5>
           <div class="d-flex align-items-center justify-content-center">
             <p class="h1">Rp</p>
             <div class="pagu-odometer h1 ml-2">0</div>
@@ -167,7 +214,7 @@
       </div>
       <div class="col-md-6 mb-3 transitionIn" style="border-left:white 1px solid">
         <div class="text-center text-white">
-          <h5>Total Capaian Pencairan 2025</h5>
+          <h5>Total Capaian Pencairan {{ now()->year }}</h5>
           <div class="d-flex align-items-center justify-content-center">
             <p class="h1">Rp</p>
             <div class="capaian-odometer h1 ml-2">0</div>
@@ -180,7 +227,7 @@
 
 <!-- Progres Capain Pencairan -->
 <div class="info-card mx-auto transitionIn" style="margin-top: -4rem; width:70%; border:rgba(0,122,172,0.7) 3px solid">
-  <p>Capain Pencairan 2025</p>
+  <p>Capain Pencairan {{ now()->year }}</p>
   <div class="progress-container">
     <div class="icon">%</div>
     <div class="progress" style="height: 20px;">
@@ -236,7 +283,7 @@
   </table>
 
   <div class="">
-    <a href="{{ route('anggaran.pendapatan', ['tahun' => now()->year]) }}" class="button button-info">> Lihat Penganggaran Sumber Dana</a>
+    <a href="{{ route('anggaran.pendapatan', ['tahun' => now()->year, 'desa' => request('desa')]) }}" class="button button-info">> Lihat Penganggaran Sumber Dana</a>
   </div>
 
   <!-- Chart -->
@@ -275,7 +322,9 @@
         <td>{{ $item->tahun }}</td>
         <td>{{ number_format($item->total_anggaran, 0, ',', '.') }}</td>
         <td>{{ number_format($item->total_realisasi, 0, ',', '.') }}</td>
-        <td>{{ number_format($item->total_realisasi / $item->total_anggaran * 100, 1,'.','') }}%</td>
+        <td>
+          {{ $item->total_anggaran != 0 ? number_format(($item->total_realisasi / $item->total_anggaran) * 100, 1, '.', '') : 0 }}%
+        </td>
       </tr>
       @endforeach
     </tbody>
@@ -349,7 +398,7 @@
 
   }
 </script>
-@endsection
+
 
 @push('scripts')
 <script>
@@ -551,3 +600,5 @@
 
 </script>
 @endpush
+@endif
+@endsection   

@@ -132,27 +132,29 @@
                 <li class="submenu-category">
                   <span class="category-title">Rincian Anggaran</span>
                   <ul>
-                    <li><a href="{{ route('anggaran.belanja', ['tahun' => now()->year]) }}">Belanja</a></li>
-                    <li><a href="{{ route('anggaran.pendapatan', ['tahun' => now()->year]) }}">Pendapatan</a></li>
+                    <li><a href="{{ route('anggaran.belanja', ['tahun' => now()->year] + ($desa ? ['desa' => $desa] : [])) }}">Belanja</a></li>
+                    <li><a href="{{ route('anggaran.pendapatan', ['tahun' => now()->year] + ($desa ? ['desa' => $desa] : [])) }}">Pendapatan</a></li>
                   </ul>
                 </li>
                 <li class="submenu-category">
                   <span class="category-title">Realisasi Anggaran</span>
                   <ul>
-                    <li><a href="{{ route('pembiayaan.belanja', ['tahun' => now()->year]) }}">Belanja</a></li>
-                    <li><a href="{{ route('pembiayaan.pendapatan', ['tahun' => now()->year]) }}">Pendapatan</a></li>
+                    <li><a href="{{ route('pembiayaan.belanja', ['tahun' => now()->year] + ($desa ? ['desa' => $desa] : [])) }}">Belanja</a></li>
+                    <li><a href="{{ route('pembiayaan.pendapatan', ['tahun' => now()->year] + ($desa ? ['desa' => $desa] : [])) }}">Pendapatan</a></li>
                   </ul>
                 </li>
                 <li class="submenu-category">
                   <span class="category-title">Kegiatan</span>
                   <ul>
-                    <li><a href="{{ route('anggaran.kegiatan', ['tahun' => now()->year]) }}">Kegiatan</a></li>
+                    <li><a href="{{ route('anggaran.kegiatan', ['tahun' => now()->year] + ($desa ? ['desa' => $desa] : [])) }}">Kegiatan</a></li>
                   </ul>
                 </li>
               </ul>
             </li>
             <li class="nav-item mr-4">
-              <a class="nav-link" href="/about" style="color: white;">Tentang Desa</a>
+              <a class="nav-link" href="{{ '/about?desa=' . ($desa ?? '') }}" style="color: white;">Tentang Desa</a>
+
+
             </li>
             <li class="nav-item login" style="border: 1px solid white; border-radius: 20px; padding: 2px 15px;">
               <a class="nav-link" href="{{ route('login') }}" style="color: white;">{{ __('auth.login') }}</a>
@@ -191,22 +193,22 @@
       
               <div class="col-md-2">
                   <h6 class="text-uppercase font-weight-bold">
-                      <a href="{{ route('anggaran.belanja', ['tahun' => now()->year]) }}" class="text-white">Anggaran</a>
+                      <a href="{{ route('anggaran.belanja', ['tahun' => now()->year] + ($desa ? ['desa' => $desa] : [])) }}" class="text-white">Anggaran</a>
                   </h6>
                   <ul class="list-unstyled">
-                      <li><a href="{{ route('anggaran.belanja', ['tahun' => now()->year]) }}" class="text-white">Belanja</a></li>
-                      <li><a href="{{ route('anggaran.pendapatan', ['tahun' => now()->year]) }}" class="text-white">Pendapatan</a></li>
+                      <li><a href="{{ route('anggaran.belanja', ['tahun' => now()->year] + ($desa ? ['desa' => $desa] : [])) }}" class="text-white">Belanja</a></li>
+                      <li><a href="{{ route('anggaran.pendapatan', ['tahun' => now()->year] + ($desa ? ['desa' => $desa] : [])) }}" class="text-white">Pendapatan</a></li>
                   </ul>
               </div>
               <!-- Grid column -->
       
               <div class="col-md-2">
                   <h6 class="text-uppercase font-weight-bold">
-                      <a href="{{ route('pembiayaan.belanja', ['tahun' => now()->year]) }}" class="text-white">Pembiayaan</a>
+                      <a href="{{ route('pembiayaan.belanja', ['tahun' => now()->year] + ($desa ? ['desa' => $desa] : [])) }}" class="text-white">Pembiayaan</a>
                   </h6>
                   <ul class="list-unstyled">
-                      <li><a href="{{ route('pembiayaan.belanja', ['tahun' => now()->year]) }}" class="text-white">Belanja</a></li>
-                      <li><a href="{{ route('pembiayaan.pendapatan', ['tahun' => now()->year]) }}" class="text-white">Pendapatan</a></li>
+                      <li><a href="{{ route('pembiayaan.belanja', ['tahun' => now()->year] + ($desa ? ['desa' => $desa] : [])) }}" class="text-white">Belanja</a></li>
+                      <li><a href="{{ route('pembiayaan.pendapatan', ['tahun' => now()->year] + ($desa ? ['desa' => $desa] : [])) }}" class="text-white">Pendapatan</a></li>
                   </ul>
               </div>
               <!-- Grid column -->

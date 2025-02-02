@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Middleware\ShareDesa;
+use App\Models\Desa;
 use App\Models\PenganggaranBelanja;
 use App\Models\PenganggaranPembiayaanBelanja;
 use App\Models\PenganggaranPembiayaanPendapatan;
@@ -12,6 +14,8 @@ use App\Services\PenganggaranBelanjaServices;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\View;
+// use View;
 
 class HomeController extends Controller
 {
@@ -20,82 +24,173 @@ class HomeController extends Controller
      *
      * @return void
      */
-    public function __construct() {}
+    protected $desa;
+    public function __construct()
+    {
+        $this->desa = session('desa', null);
+        // memakai middleware untuk share data ke semua view
+
+        $this->middleware(ShareDesa::class);
+
+        View::share('desa', $this->desa);
+    }
 
     /**
      * Show the application dashboard.
      *
      * @return \Illuminate\Contracts\Support\Renderable
      */
-    public function index()
+    public function index(Request $request)
     {
         $user = auth()->user();
-
-
-
-        $pendapatanDesa = [
-            (object)[
-                "sumber_pendapatan" => "PAD",
-                "anggaran" => 100000000,
-                "realisasi" => 90000000
-            ],
-            (object)[
-                "sumber_pendapatan" => "Alokasi Dana Desa (ADD)",
-                "anggaran" => 200000000,
-                "realisasi" => 80000000
-            ],
-            (object)[
-                "sumber_pendapatan" => "Dana Desa",
-                "anggaran" => 500000000,
-                "realisasi" => 410000000
-            ],
-            (object)[
-                "sumber_pendapatan" => "Bantuan Provinsi",
-                "anggaran" => 200000000,
-                "realisasi" => 150000000
-            ]
-        ];
-
-
-        $totalPaguAnggaran = 0;
-        $totalRealisasi = 0;
-        foreach ($pendapatanDesa as $pendapatan) {
-            $totalPaguAnggaran += $pendapatan->anggaran;
-            $totalRealisasi += $pendapatan->realisasi;
+        $desa = null;
+        $daerah = null;
+        
+        if ($request->desa) {
+            $desa = Desa::where('id', $request->desa)->first();
+            
+            // Query untuk data daerah
+            $daerah = DB::table('desa')
+                ->leftJoin('kecamatan', 'desa.id_kecamatan', '=', 'kecamatan.id')
+                ->leftJoin('kabupaten', 'kecamatan.id_kabupaten', '=', 'kabupaten.id')
+                ->leftJoin('provinsi', 'kabupaten.id_provinsi', '=', 'provinsi.id')
+                ->where('desa.id', $request->desa)
+                ->select(
+                    'desa.*',
+                    'kecamatan.nama as kecamatan_nama',
+                    'kabupaten.nama as kabupaten_nama',
+                    'provinsi.nama as provinsi_nama'
+                )
+                ->first();
+    
+            session(['desa' => $desa->id]);
         }
-
-        $persentaseRealisasi = ($totalRealisasi / $totalPaguAnggaran) * 100;
-
-        $totalAnggaranRealiasiPerTahun = [
-            (object)[
-                "tahun" => 2018,
-                "total_anggaran" => 1000000000,
-                "total_realisasi" => 900000000
-            ],
-            (object)[
-                "tahun" => 2019,
-                "total_anggaran" => 1500000000,
-                "total_realisasi" => 1400000000
-            ],
-            (object)[
-                "tahun" => 2020,
-                "total_anggaran" => 2000000000,
-                "total_realisasi" => 1900000000
-            ]
-        ];
-
-
+    
+        // Inisialisasi variabel data
         $data = (object)[
-            "totalPaguAnggaran" => $totalPaguAnggaran,
-            "totalRealisasi" => $totalRealisasi,
-            "persentaseRealisasi" => $persentaseRealisasi,
-            "pendapatanDesa" => $pendapatanDesa,
-            "totalAnggaranRealiasiPerTahun" => $totalAnggaranRealiasiPerTahun
+            "totalPaguAnggaran" => 0,
+            "totalRealisasi" => 0,
+            "persentaseRealisasi" => 0,
+            "pendapatanDesa" => [],
+            "totalAnggaranRealiasiPerTahun" => []
         ];
-        if ($user) {
-            return view('dashboard');
+    
+        if ($desa) {
+            // 1. Data Pendapatan Desa
+            $pendapatanDesa = DB::table('penganggaran_pendapatan')
+                ->join('sumber_dana', 'penganggaran_pendapatan.id_sumber_dana', '=', 'sumber_dana.id')
+                ->join('penganggaran_tahun', 'penganggaran_pendapatan.id_penganggaran_tahun', '=', 'penganggaran_tahun.id')
+                ->where('penganggaran_tahun.id_desa', $desa->id)
+                ->select(
+                    'sumber_dana.nama as sumber_pendapatan',
+                    DB::raw('SUM(penganggaran_pendapatan.volume * penganggaran_pendapatan.harga_satuan) as anggaran'),
+                    DB::raw('0 as realisasi') // Ganti dengan query realisasi jika ada data
+                )
+                ->groupBy('sumber_dana.nama')
+                ->get();
+    
+            // 2. Total Pagu Anggaran dan Realisasi
+            $totalPaguAnggaran = $pendapatanDesa->sum('anggaran');
+            $totalRealisasi = $pendapatanDesa->sum('realisasi');
+            $persentaseRealisasi = $totalPaguAnggaran > 0 ? ($totalRealisasi / $totalPaguAnggaran) * 100 : 0;
+    
+            // 3. Data Tahun ke Tahun
+            $tahunList = DB::table('penganggaran_tahun')
+                ->where('id_desa', $desa->id)
+                ->pluck('tahun');
+    
+            $totalAnggaranRealiasiPerTahun = collect();
+            foreach ($tahunList as $tahun) {
+                $anggaran = DB::table('penganggaran_pendapatan')
+                    ->join('penganggaran_tahun', 'penganggaran_pendapatan.id_penganggaran_tahun', '=', 'penganggaran_tahun.id')
+                    ->where('penganggaran_tahun.tahun', $tahun)
+                    ->where('penganggaran_tahun.id_desa', $desa->id)
+                    ->sum(DB::raw('volume * harga_satuan'));
+    
+                $totalAnggaranRealiasiPerTahun->push((object)[
+                    "tahun" => $tahun,
+                    "total_anggaran" => $anggaran,
+                    "total_realisasi" => 0 // Ganti dengan query realisasi jika ada data
+                ]);
+            }
+    
+            $data = (object)[
+                "totalPaguAnggaran" => $totalPaguAnggaran,
+                "totalRealisasi" => $totalRealisasi,
+                "persentaseRealisasi" => $persentaseRealisasi,
+                "pendapatanDesa" => $pendapatanDesa,
+                "totalAnggaranRealiasiPerTahun" => $totalAnggaranRealiasiPerTahun
+            ];
         }
-        return view('home', compact('data'));
+    
+        $listDesa = Desa::all();
+
+        $totalUangPerTahun = DB::table('penganggaran_tahun as pt')
+        ->join('penganggaran_bidang as pb', 'pt.id', '=', 'pb.id_penganggaran_tahun')
+        ->join('penganggaran_sub_bidang as psb', 'pb.id', '=', 'psb.id_penganggaran_bidang')
+        ->join('penganggaran_kegiatan as pgk', 'psb.id', '=', 'pgk.id_penganggaran_sub_bidang')
+        ->join('penganggaran_paket_kegiatan as pk', 'pgk.id', '=', 'pk.id_penganggaran_kegiatan')
+        ->select(
+            'pt.tahun',
+            DB::raw('SUM(pgk.pagu) as total_uang')
+        )
+        ->where('pt.id_desa', $request->desa)
+        ->groupBy('pt.tahun')
+        ->orderBy('pt.tahun')
+        ->get();
+
+        $totalUang = 0;
+        foreach ($totalUangPerTahun as $item) {
+            $totalUang += $item->total_uang;
+        }
+        // dd($totalUangPerTahun);
+
+        
+        
+        if ($user) {
+            return view('dashboard', compact('data', 'desa', 'daerah'));
+        }
+
+        $tahunAll = PenganggaranTahun::where('id_desa',$request->desa)->pluck('tahun')->sortDesc();
+        $tahunCount = $tahunAll->count();
+
+        $dataKegiatanAll = DB::table('penganggaran_bidang as pb')
+        ->join('penganggaran_sub_bidang as psb', 'pb.id', '=', 'psb.id_penganggaran_bidang')
+        ->join('penganggaran_kegiatan as pgk', 'psb.id', '=', 'pgk.id_penganggaran_sub_bidang')
+        ->join('penganggaran_paket_kegiatan as pk', 'pgk.id', '=', 'pk.id_penganggaran_kegiatan')
+        ->join('bidang as b', 'pb.id_bidang', '=', 'b.id')
+        ->join('sub_bidang as sb', 'psb.id_sub_bidang', '=', 'sb.id')
+        ->join('kegiatan as k', 'pgk.id_kegiatan', '=', 'k.id')
+        ->join('penganggaran_tahun as pt', 'pb.id_penganggaran_tahun', '=', 'pt.id')
+        ->select(
+            'b.kode as kode_bidang',
+            'b.nama as nama_bidang',
+            'sb.kode as kode_sub_bidang',
+            'sb.nama as nama_sub_bidang',
+            'k.kode as kode_kegiatan',
+            'k.nama as nama_kegiatan',
+            'pk.id as kode_paket',
+            'pk.nama_paket as nama_paket',
+            'pgk.pagu as jumlah_uang'
+        )
+        ->where('pt.id_desa', $request->desa)
+        ->orderBy('b.kode')
+        ->orderBy('sb.kode')
+        ->orderBy('k.kode')
+        ->orderBy('pk.id')
+        ->get();
+
+        $kegiatanCount = $dataKegiatanAll->count();
+
+        // dd($kegiatan);
+    
+        return view('home', compact('data', 'desa', 'listDesa', 'daerah', 'tahunAll', 'tahunCount', 'kegiatanCount', 'totalUang'));
+    }
+
+    public function pilihDesa(Request $request)
+    {
+        $desa = Desa::find($request->desa);
+        return redirect()->route('home', ['desa' => $desa->id]);
     }
 
     public function anggaranPendapatan(Request $request)
@@ -105,15 +200,12 @@ class HomeController extends Controller
         if ($request->tahun) {
             $tahunSelected = request()->tahun;
         }
-        //  data all
-        $tahunAnggaran = PenganggaranTahun::where('tahun', $tahunSelected)->first();
+        // dd($this->desa);
+        $tahunAnggaran = PenganggaranTahun::where('tahun', $tahunSelected)->where('id_desa', $request->desa)->first();
         $data = PenganggaranPendapatan::selectRaw('id_rekening_objek, SUM(harga_satuan * volume) AS harga_satuan')->where(['id_penganggaran_tahun' => $tahunAnggaran->id])->groupBy('id_rekening_objek')->with(['rekening_objek'])->get();
 
-        // dd($data[0]->rekening_objek->nama);
-        // data detail
 
-        $tahunAll = PenganggaranTahun::pluck('tahun')->sortDesc();
-        // dd($tahunAll);
+        $tahunAll = PenganggaranTahun::where('id_desa',$request->desa)->pluck('tahun')->sortDesc();
 
         return view('guest.anggaran.pendapatan', [
             'data' => $data,
@@ -124,18 +216,11 @@ class HomeController extends Controller
 
     public function detailAnggaranPendapatan($tahun, $rekeningObjek)
     {
-        // Ambil data detail dari services
         $tahunAnggaran = PenganggaranTahun::where('tahun', $tahun)->first();
         $rekeningObjek = RekeningObjek::find($rekeningObjek);
         $dataDetail = PenganggaranPendapatan::selectRaw('id_rekening_objek, SUM(harga_satuan * volume) AS total')->where(['id_penganggaran_tahun' => $tahunAnggaran->id, 'id_rekening_objek' => $rekeningObjek->id])->groupBy('id_rekening_objek')->with(['rekening_objek'])->get();
 
         $formattedDataDetail = [];
-        // Format data detail
-        // 'kode_rekening' => $item['rekening_objek']['full_code'],
-        //         'uraian' => $item['rekening_objek']['nama'],
-        //         'jumlah' => (int) str_replace(',', '', $item['total']),
-        //         'tipe' => 'sub',
-        //         'keterangan' => 'Detail Anggaran',
 
         foreach ($dataDetail as $detail) {
             $formattedDataDetail[] = [
@@ -147,7 +232,6 @@ class HomeController extends Controller
             ];
         }
 
-        // dd($formattedDataDetail);
         return view('guest.anggaran.detailPendapatan', [
             'tahunAnggaran' => $tahunAnggaran,
             'rekeningObjek' => $rekeningObjek,
@@ -162,15 +246,11 @@ class HomeController extends Controller
         if ($request->tahun) {
             $tahunSelected = request()->tahun;
         }
-        //  data all
-        $tahunAnggaran = PenganggaranTahun::where('tahun', $tahunSelected)->first();
+        $tahunAnggaran = PenganggaranTahun::where('tahun', $tahunSelected)->where('id_desa', $request->desa)->first();
         $data = PenganggaranBelanja::selectRaw('id_rekening_objek, SUM(harga_satuan * volume) AS harga_satuan')->where(['id_penganggaran_tahun' => $tahunAnggaran->id])->groupBy('id_rekening_objek')->with(['rekening_objek'])->get();
 
-        // dd($data[0]->rekening_objek->nama);
-        // data detail
 
-        $tahunAll = PenganggaranTahun::pluck('tahun')->sortDesc();
-        // dd($tahunAll);
+        $tahunAll = PenganggaranTahun::where('id_desa',$request->desa)->pluck('tahun')->sortDesc();
 
         return view('guest.anggaran.belanja', [
             'data' => $data,
@@ -181,18 +261,11 @@ class HomeController extends Controller
 
     public function detailanggaranBelanja($tahun, $rekeningObjek)
     {
-        // Ambil data detail dari services
         $tahunAnggaran = PenganggaranTahun::where('tahun', $tahun)->first();
         $rekeningObjek = RekeningObjek::find($rekeningObjek);
         $dataDetail = PenganggaranBelanja::selectRaw('id_rekening_objek, SUM(harga_satuan * volume) AS total')->where(['id_penganggaran_tahun' => $tahunAnggaran->id, 'id_rekening_objek' => $rekeningObjek->id])->groupBy('id_rekening_objek')->with(['rekening_objek'])->get();
 
         $formattedDataDetail = [];
-        // Format data detail
-        // 'kode_rekening' => $item['rekening_objek']['full_code'],
-        //         'uraian' => $item['rekening_objek']['nama'],
-        //         'jumlah' => (int) str_replace(',', '', $item['total']),
-        //         'tipe' => 'sub',
-        //         'keterangan' => 'Detail Anggaran',
 
         foreach ($dataDetail as $detail) {
             $formattedDataDetail[] = [
@@ -204,7 +277,6 @@ class HomeController extends Controller
             ];
         }
 
-        // dd($formattedDataDetail);
         return view('guest.anggaran.detail', [
             'tahunAnggaran' => $tahunAnggaran,
             'rekeningObjek' => $rekeningObjek,
@@ -220,16 +292,11 @@ class HomeController extends Controller
         if ($request->tahun) {
             $tahunSelected = request()->tahun;
         }
-        //  data all
-        $tahunAnggaran = PenganggaranTahun::where('tahun', $tahunSelected)->first();
+        $tahunAnggaran = PenganggaranTahun::where('tahun', $tahunSelected)->where('id_desa', $request->desa)->first();
         $data = PenganggaranPembiayaanPendapatan::selectRaw('id_rekening_objek, SUM(harga_satuan * volume) AS harga_satuan')->where(['id_penganggaran_tahun' => $tahunAnggaran->id])->groupBy('id_rekening_objek')->with(['rekening_objek'])->get();
 
-        // dd($data[0]->rekening_objek->nama);
-        // data detail
 
-        $tahunAll = PenganggaranTahun::pluck('tahun')->sortDesc();
-        // sort tahun mulai dari terbesar ke terkecil
-        // dd($tahunAll);
+        $tahunAll = PenganggaranTahun::where('id_desa',$request->desa)->pluck('tahun')->sortDesc();
 
         return view('guest.pembiayaan.pendapatan', [
             'data' => $data,
@@ -240,18 +307,11 @@ class HomeController extends Controller
 
     public function detailPembiayaanPendapatan($tahun, $rekeningObjek)
     {
-        // Ambil data detail dari services
         $tahunAnggaran = PenganggaranTahun::where('tahun', $tahun)->first();
         $rekeningObjek = RekeningObjek::find($rekeningObjek);
         $dataDetail = PenganggaranPembiayaanPendapatan::selectRaw('id_rekening_objek, SUM(harga_satuan * volume) AS total')->where(['id_penganggaran_tahun' => $tahunAnggaran->id, 'id_rekening_objek' => $rekeningObjek->id])->groupBy('id_rekening_objek')->with(['rekening_objek'])->get();
 
         $formattedDataDetail = [];
-        // Format data detail
-        // 'kode_rekening' => $item['rekening_objek']['full_code'],
-        //         'uraian' => $item['rekening_objek']['nama'],
-        //         'jumlah' => (int) str_replace(',', '', $item['total']),
-        //         'tipe' => 'sub',
-        //         'keterangan' => 'Detail Anggaran',
 
         foreach ($dataDetail as $detail) {
             $formattedDataDetail[] = [
@@ -263,7 +323,6 @@ class HomeController extends Controller
             ];
         }
 
-        // dd($formattedDataDetail);
         return view('guest.pembiayaan.detailPendapatan', [
             'tahunAnggaran' => $tahunAnggaran,
             'rekeningObjek' => $rekeningObjek,
@@ -280,16 +339,11 @@ class HomeController extends Controller
         if ($request->tahun) {
             $tahunSelected = request()->tahun;
         }
-        //  data all
-        $tahunAnggaran = PenganggaranTahun::where('tahun', $tahunSelected)->first();
+        $tahunAnggaran = PenganggaranTahun::where('tahun', $tahunSelected)->where('id_desa', $request->desa)->first();
         $data = PenganggaranPembiayaanBelanja::selectRaw('id_rekening_objek, SUM(harga_satuan * volume) AS harga_satuan')->where(['id_penganggaran_tahun' => $tahunAnggaran->id])->groupBy('id_rekening_objek')->with(['rekening_objek'])->get();
 
-        // dd($data[0]->rekening_objek->nama);
-        // data detail
 
-        $tahunAll = PenganggaranTahun::pluck('tahun')->sortDesc();
-        // sort tahun mulai dari terbesar ke terkecil
-        // dd($tahunAll);
+        $tahunAll = PenganggaranTahun::where('id_desa',$request->desa)->pluck('tahun')->sortDesc();
 
         return view('guest.pembiayaan.belanja', [
             'data' => $data,
@@ -300,18 +354,11 @@ class HomeController extends Controller
 
     public function detailPembiayaanBelanja($tahun, $rekeningObjek)
     {
-        // Ambil data detail dari services
         $tahunAnggaran = PenganggaranTahun::where('tahun', $tahun)->first();
         $rekeningObjek = RekeningObjek::find($rekeningObjek);
         $dataDetail = PenganggaranPembiayaanBelanja::selectRaw('id_rekening_objek, SUM(harga_satuan * volume) AS total')->where(['id_penganggaran_tahun' => $tahunAnggaran->id, 'id_rekening_objek' => $rekeningObjek->id])->groupBy('id_rekening_objek')->with(['rekening_objek'])->get();
 
         $formattedDataDetail = [];
-        // Format data detail
-        // 'kode_rekening' => $item['rekening_objek']['full_code'],
-        //         'uraian' => $item['rekening_objek']['nama'],
-        //         'jumlah' => (int) str_replace(',', '', $item['total']),
-        //         'tipe' => 'sub',
-        //         'keterangan' => 'Detail Anggaran',
 
         foreach ($dataDetail as $detail) {
             $formattedDataDetail[] = [
@@ -323,7 +370,6 @@ class HomeController extends Controller
             ];
         }
 
-        // dd($formattedDataDetail);
         return view('guest.pembiayaan.detail', [
             'tahunAnggaran' => $tahunAnggaran,
             'rekeningObjek' => $rekeningObjek,
@@ -332,239 +378,217 @@ class HomeController extends Controller
     }
 
     public function anggaranKegiatan(Request $request)
-{
-    // Ambil tahun dari request atau gunakan tahun sekarang
-    $tahunSelected = Date('Y');
-    $tahun = Date('Y');
+    {
+        $tahunSelected = Date('Y');
+        $tahun = Date('Y');
 
         if ($request->tahun) {
             $tahunSelected = request()->tahun;
             $tahun = request()->tahun;
         }
-    // Query untuk mengambil data kegiatan yang dikelompokkan berdasarkan tahun
-    $data = DB::table('penganggaran_bidang as pb')
-        ->join('penganggaran_sub_bidang as psb', 'pb.id', '=', 'psb.id_penganggaran_bidang')
-        ->join('penganggaran_kegiatan as pgk', 'psb.id', '=', 'pgk.id_penganggaran_sub_bidang')
-        ->join('penganggaran_paket_kegiatan as pk', 'pgk.id', '=', 'pk.id_penganggaran_kegiatan')
-        ->join('bidang as b', 'pb.id_bidang', '=', 'b.id')
-        ->join('sub_bidang as sb', 'psb.id_sub_bidang', '=', 'sb.id')
-        ->join('kegiatan as k', 'pgk.id_kegiatan', '=', 'k.id')
-        ->join('penganggaran_tahun as pt', 'pb.id_penganggaran_tahun', '=', 'pt.id')
-        ->where('pt.tahun', $tahun) // Filter berdasarkan tahun
-        ->select(
-            'b.kode as kode_bidang',
-            'b.nama as nama_bidang',
-            'sb.kode as kode_sub_bidang',
-            'sb.nama as nama_sub_bidang',
-            'k.kode as kode_kegiatan',
-            'k.nama as nama_kegiatan',
-            'pk.id as kode_paket',
-            'pk.nama_paket as nama_paket',
-            'pgk.pagu as jumlah_uang'
-        )
-        ->orderBy('b.kode')
-        ->orderBy('sb.kode')
-        ->orderBy('k.kode')
-        ->orderBy('pk.id')
-        ->get();
+        $data = DB::table('penganggaran_bidang as pb')
+            ->join('penganggaran_sub_bidang as psb', 'pb.id', '=', 'psb.id_penganggaran_bidang')
+            ->join('penganggaran_kegiatan as pgk', 'psb.id', '=', 'pgk.id_penganggaran_sub_bidang')
+            ->join('penganggaran_paket_kegiatan as pk', 'pgk.id', '=', 'pk.id_penganggaran_kegiatan')
+            ->join('bidang as b', 'pb.id_bidang', '=', 'b.id')
+            ->join('sub_bidang as sb', 'psb.id_sub_bidang', '=', 'sb.id')
+            ->join('kegiatan as k', 'pgk.id_kegiatan', '=', 'k.id')
+            ->join('penganggaran_tahun as pt', 'pb.id_penganggaran_tahun', '=', 'pt.id')
+            ->select(
+                'b.kode as kode_bidang',
+                'b.nama as nama_bidang',
+                'sb.kode as kode_sub_bidang',
+                'sb.nama as nama_sub_bidang',
+                'k.kode as kode_kegiatan',
+                'k.nama as nama_kegiatan',
+                'pk.id as kode_paket',
+                'pk.nama_paket as nama_paket',
+                'pgk.pagu as jumlah_uang'
+            )
+            ->where('pt.id_desa', $request->desa)
+            ->orderBy('b.kode')
+            ->orderBy('sb.kode')
+            ->orderBy('k.kode')
+            ->orderBy('pk.id')
+            ->get();
 
-    // Kelompokkan data berdasarkan bidang, sub-bidang, dan kegiatan
-    $groupedData = [];
-    foreach ($data as $item) {
-        $bidangKey = $item->kode_bidang . ' - ' . $item->nama_bidang;
-        $subBidangKey = $item->kode_sub_bidang . ' - ' . $item->nama_sub_bidang;
-        $kegiatanKey = $item->kode_kegiatan . ' - ' . $item->nama_kegiatan;
+        $groupedData = [];
+        foreach ($data as $item) {
+            $bidangKey = $item->kode_bidang . ' - ' . $item->nama_bidang;
+            $subBidangKey = $item->kode_sub_bidang . ' - ' . $item->nama_sub_bidang;
+            $kegiatanKey = $item->kode_kegiatan . ' - ' . $item->nama_kegiatan;
 
-        if (!isset($groupedData[$bidangKey])) {
-            $groupedData[$bidangKey] = [
-                'nama' => $item->nama_bidang,
-                'kode' => $item->kode_bidang,
-                'sub_bidang' => [],
-                'total' => 0
+            if (!isset($groupedData[$bidangKey])) {
+                $groupedData[$bidangKey] = [
+                    'nama' => $item->nama_bidang,
+                    'kode' => $item->kode_bidang,
+                    'sub_bidang' => [],
+                    'total' => 0
+                ];
+            }
+
+            if (!isset($groupedData[$bidangKey]['sub_bidang'][$subBidangKey])) {
+                $groupedData[$bidangKey]['sub_bidang'][$subBidangKey] = [
+                    'nama' => $item->nama_sub_bidang,
+                    'kode' => $item->kode_sub_bidang,
+                    'kegiatan' => [],
+                    'total' => 0
+                ];
+            }
+
+            if (!isset($groupedData[$bidangKey]['sub_bidang'][$subBidangKey]['kegiatan'][$kegiatanKey])) {
+                $groupedData[$bidangKey]['sub_bidang'][$subBidangKey]['kegiatan'][$kegiatanKey] = [
+                    'nama' => $item->nama_kegiatan,
+                    'kode' => $item->kode_kegiatan,
+                    'paket' => [],
+                    'total' => 0
+                ];
+            }
+
+            $groupedData[$bidangKey]['sub_bidang'][$subBidangKey]['kegiatan'][$kegiatanKey]['paket'][] = [
+                'nama_paket' => $item->nama_paket,
+                'jumlah_uang' => $item->jumlah_uang
             ];
+
+            $groupedData[$bidangKey]['sub_bidang'][$subBidangKey]['kegiatan'][$kegiatanKey]['total'] += $item->jumlah_uang;
+            $groupedData[$bidangKey]['sub_bidang'][$subBidangKey]['total'] += $item->jumlah_uang;
+            $groupedData[$bidangKey]['total'] += $item->jumlah_uang;
         }
 
-        if (!isset($groupedData[$bidangKey]['sub_bidang'][$subBidangKey])) {
-            $groupedData[$bidangKey]['sub_bidang'][$subBidangKey] = [
-                'nama' => $item->nama_sub_bidang,
-                'kode' => $item->kode_sub_bidang,
-                'kegiatan' => [],
-                'total' => 0
-            ];
+        $totalKeseluruhan = 0;
+        foreach ($groupedData as $bidang) {
+            $totalKeseluruhan += $bidang['total'];
         }
 
-        if (!isset($groupedData[$bidangKey]['sub_bidang'][$subBidangKey]['kegiatan'][$kegiatanKey])) {
-            $groupedData[$bidangKey]['sub_bidang'][$subBidangKey]['kegiatan'][$kegiatanKey] = [
-                'nama' => $item->nama_kegiatan,
-                'kode' => $item->kode_kegiatan,
-                'paket' => [],
-                'total' => 0
-            ];
-        }
-
-        $groupedData[$bidangKey]['sub_bidang'][$subBidangKey]['kegiatan'][$kegiatanKey]['paket'][] = [
-            'nama_paket' => $item->nama_paket,
-            'jumlah_uang' => $item->jumlah_uang
+        $grafikData = [
+            'bidang' => [],
+            'sub_bidang' => [],
+            'kegiatan' => [],
+            'paket' => []
         ];
 
-        // Tambahkan jumlah uang ke total kegiatan, sub-bidang, dan bidang
-        $groupedData[$bidangKey]['sub_bidang'][$subBidangKey]['kegiatan'][$kegiatanKey]['total'] += $item->jumlah_uang;
-        $groupedData[$bidangKey]['sub_bidang'][$subBidangKey]['total'] += $item->jumlah_uang;
-        $groupedData[$bidangKey]['total'] += $item->jumlah_uang;
-    }
-
-    // Hitung total keseluruhan anggaran
-    $totalKeseluruhan = 0;
-    foreach ($groupedData as $bidang) {
-        $totalKeseluruhan += $bidang['total'];
-    }
-
-    // Format data untuk grafik
-    $grafikData = [
-        'bidang' => [],
-        'sub_bidang' => [],
-        'kegiatan' => [],
-        'paket' => []
-    ];
-
-    foreach ($groupedData as $bidang) {
-        $grafikData['bidang'][] = [
-            'label' => $bidang['nama'],
-            'total' => $bidang['total']
-        ];
-
-        foreach ($bidang['sub_bidang'] as $subBidang) {
-            $grafikData['sub_bidang'][] = [
-                'label' => $subBidang['nama'],
-                'total' => $subBidang['total']
+        foreach ($groupedData as $bidang) {
+            $grafikData['bidang'][] = [
+                'label' => $bidang['nama'],
+                'total' => $bidang['total']
             ];
 
-            foreach ($subBidang['kegiatan'] as $kegiatan) {
-                $grafikData['kegiatan'][] = [
-                    'label' => $kegiatan['nama'],
-                    'total' => $kegiatan['total']
+            foreach ($bidang['sub_bidang'] as $subBidang) {
+                $grafikData['sub_bidang'][] = [
+                    'label' => $subBidang['nama'],
+                    'total' => $subBidang['total']
                 ];
 
-                foreach ($kegiatan['paket'] as $paket) {
-                    $grafikData['paket'][] = [
-                        'label' => $paket['nama_paket'],
-                        'total' => $paket['jumlah_uang']
+                foreach ($subBidang['kegiatan'] as $kegiatan) {
+                    $grafikData['kegiatan'][] = [
+                        'label' => $kegiatan['nama'],
+                        'total' => $kegiatan['total']
                     ];
+
+                    foreach ($kegiatan['paket'] as $paket) {
+                        $grafikData['paket'][] = [
+                            'label' => $paket['nama_paket'],
+                            'total' => $paket['jumlah_uang']
+                        ];
+                    }
                 }
             }
         }
+
+        $tahunAll = PenganggaranTahun::where('id_desa',$request->desa)->pluck('tahun')->sortDesc();
+
+        return view('guest.kegiatan', compact('groupedData', 'totalKeseluruhan', 'grafikData', 'tahun', 'tahunAll', 'tahunSelected'));
     }
 
-    $tahunAll = PenganggaranTahun::pluck('tahun')->sortDesc();
-
-    // Kirim data ke view
-    return view('guest.kegiatan', compact('groupedData', 'totalKeseluruhan', 'grafikData', 'tahun','tahunAll', 'tahunSelected'));
-}
-
-    public function about()
+    public function about(Request $request)
     {
-        return view('guest.about');
+        $daerah = DB::table('desa')
+                ->leftJoin('kecamatan', 'desa.id_kecamatan', '=', 'kecamatan.id')
+                ->leftJoin('kabupaten', 'kecamatan.id_kabupaten', '=', 'kabupaten.id')
+                ->leftJoin('provinsi', 'kabupaten.id_provinsi', '=', 'provinsi.id')
+                ->where('desa.id', $request->desa)
+                ->select(
+                    'desa.*',
+                    'kecamatan.nama as kecamatan_nama',
+                    'kabupaten.nama as kabupaten_nama',
+                    'provinsi.nama as provinsi_nama'
+                )
+                ->first();
+        
+                $data = DB::table('desa')
+                ->leftJoin('kepala_desa', function ($join) {
+                    $join->on('desa.id', '=', 'kepala_desa.id_desa')
+                         ->where('kepala_desa.aktif', 'Ya');
+                })
+                ->leftJoin('sekretaris_desa', function ($join) {
+                    $join->on('desa.id', '=', 'sekretaris_desa.id_desa')
+                         ->where('sekretaris_desa.aktif', 'Ya');
+                })
+                ->leftJoin('kaur_keuangan', function ($join) {
+                    $join->on('desa.id', '=', 'kaur_keuangan.id_desa')
+                         ->where('kaur_keuangan.aktif', 'Ya');
+                })
+                ->leftJoin('pelaksana_kegiatan', function ($join) {
+                    $join->on('desa.id', '=', 'pelaksana_kegiatan.id_desa')
+                         ->where('pelaksana_kegiatan.aktif', 'Ya');
+                })
+                ->leftJoin('perencanaan_visi', 'desa.id', '=', 'perencanaan_visi.id_desa')
+                ->leftJoin('perencanaan_misi', 'perencanaan_visi.id', '=', 'perencanaan_misi.id_visi')
+                ->leftJoin('perencanaan_tujuan', 'perencanaan_misi.id', '=', 'perencanaan_tujuan.id_misi')
+                ->leftJoin('perencanaan_sasaran', 'perencanaan_tujuan.id', '=', 'perencanaan_sasaran.id_tujuan')
+                ->select(
+                    'desa.*',
+                    'kepala_desa.nama as kepala_desa_nama',
+                    'kepala_desa.jabatan as kepala_desa_jabatan',
+                    'sekretaris_desa.nama as sekretaris_desa_nama',
+                    'sekretaris_desa.jabatan as sekretaris_desa_jabatan',
+                    'kaur_keuangan.nama as kaur_keuangan_nama',
+                    'kaur_keuangan.jabatan as kaur_keuangan_jabatan',
+                    'pelaksana_kegiatan.nama as pelaksana_kegiatan_nama',
+                    'pelaksana_kegiatan.jabatan as pelaksana_kegiatan_jabatan',
+                    'perencanaan_visi.uraian as visi_uraian',
+                    'perencanaan_misi.uraian as misi_uraian',
+                    'perencanaan_tujuan.uraian as tujuan_uraian',
+                    'perencanaan_sasaran.uraian as sasaran_uraian'
+                )
+                ->where('desa.id', $request->desa)
+                ->get();
+        
+            if ($data->isEmpty()) {
+                return response()->json(['message' => 'Desa tidak ditemukan'], 404);
+            }
+        
+            // Format data
+            $formattedData = [
+                'desa' => [
+                    'id' => $data[0]->id,
+                    'nama' => $data[0]->nama,
+                    'kode' => $data[0]->kode,
+                    'created_at' => $data[0]->created_at,
+                    'updated_at' => $data[0]->updated_at,
+                ],
+                'kepala_desa' => [
+                    'nama' => $data[0]->kepala_desa_nama,
+                    'jabatan' => $data[0]->kepala_desa_jabatan,
+                ],
+                'sekretaris_desa' => [
+                    'nama' => $data[0]->sekretaris_desa_nama,
+                    'jabatan' => $data[0]->sekretaris_desa_jabatan,
+                ],
+                'kaur_keuangan' => [
+                    'nama' => $data[0]->kaur_keuangan_nama,
+                    'jabatan' => $data[0]->kaur_keuangan_jabatan,
+                ],
+                'pelaksana_kegiatan' => $data->pluck('pelaksana_kegiatan_nama', 'pelaksana_kegiatan_jabatan')->unique(),
+                'visi' => $data[0]->visi_uraian,
+                'misi' => $data->pluck('misi_uraian')->unique()->values(),
+                'tujuan' => $data->pluck('tujuan_uraian')->unique()->values(),
+                'sasaran' => $data->pluck('sasaran_uraian')->unique()->values(),
+            ];
+
+            $data = $formattedData;
+            // dd($data['visi']);
+                // dd($data);
+        return view('guest.about', compact('daerah', 'data'));
     }
 }
-
-        // public function rincianPendapatan()
-        // {
-        //     $data = [
-        //         [
-        //             'kode_rekening' => '1',
-        //             'uraian' => 'Pendapatan Asli Desa',
-        //             'jumlah' => 100000000,
-        //             'keterangan' => 'PAD',
-        //             'tipe' => 'header'
-        //         ],
-        //         [
-        //             'kode_rekening' => '1.1',
-        //             'uraian' => 'Pendapatan Pajak',
-        //             'jumlah' => 10000000,
-        //             'keterangan' => 'PAD',
-        //             'tipe' => 'sub'
-        //         ],
-        //         [
-        //             'kode_rekening' => '1.2',
-        //             'uraian' => 'Pendapatan Retribusi',
-        //             'jumlah' => 20000000,
-        //             'keterangan' => 'PAD',
-        //             'tipe' => 'sub'
-        //         ],
-        //         [
-        //             'kode_rekening' => '1.3',
-        //             'uraian' => 'Pendapatan Hasil Usaha',
-        //             'jumlah' => 30000000,
-        //             'keterangan' => 'PAD',
-        //             'tipe' => 'sub'
-        //         ],
-        //         [
-        //             'kode_rekening' => '1.4',
-        //             'uraian' => 'Pendapatan Lain-lain',
-        //             'jumlah' => 40000000,
-        //             'keterangan' => 'PAD',
-        //             'tipe' => 'sub'
-        //         ],
-        //         [
-        //             'kode_rekening' => '2',
-        //             'uraian' => 'Pendapatan Dana Desa',
-        //             'jumlah' => 200000000,
-        //             'keterangan' => 'ADD',
-        //             'tipe' => 'header'
-        //         ],
-        //         [
-        //             'kode_rekening' => '2.1',
-        //             'uraian' => 'Pendapatan ADD I',
-        //             'jumlah' => 100000000,
-        //             'keterangan' => 'ADD',
-        //             'tipe' => 'sub'
-        //         ],
-        //         [
-        //             'kode_rekening' => '2.2',
-        //             'uraian' => 'Pendapatan ADD II',
-        //             'jumlah' => 100000000,
-        //             'keterangan' => 'ADD',
-        //             'tipe' => 'sub'
-        //         ],
-        //         [
-        //             'kode_rekening' => '3',
-        //             'uraian' => 'Pendapatan Bantuan Provinsi',
-        //             'jumlah' => 150000000,
-        //             'keterangan' => 'Bantuan Provinsi',
-        //             'tipe' => 'header'
-        //         ],
-        //         [
-        //             'kode_rekening' => '3.1',
-        //             'uraian' => 'Pendapatan Bantuan Provinsi I',
-        //             'jumlah' => 75000000,
-        //             'keterangan' => 'Bantuan Provinsi',
-        //             'tipe' => 'sub'
-        //         ],
-        //         [
-        //             'kode_rekening' => '3.2',
-        //             'uraian' => 'Pendapatan Bantuan Provinsi II',
-        //             'jumlah' => 75000000,
-        //             'keterangan' => 'Bantuan Provinsi',
-        //             'tipe' => 'sub'
-        //         ],
-        //     ];
-        
-        //     $tahunAll = [
-        //         '2018',
-        //         '2019',
-        //         '2020',
-        //         '2021',
-        //         '2022',
-        //         '2023',
-        //         '2024',
-        //         '2025',
-        //     ];
-        //     $tahunSelected = Date('Y');
-        
-        //     if(request()->tahun){
-        //         $tahunSelected = request()->tahun;
-        //     }
-        
-        //     return view('guest.anggaran.belanja.belanja', ['data' => $data, 'tahunAll' => $tahunAll, 'tahunSelected' => $tahunSelected]);
-        
-        // }

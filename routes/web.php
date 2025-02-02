@@ -54,7 +54,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/', [App\Http\Controllers\HomeController::class, 'index']);
+Route::get('/', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
 Route::get('/anggaran/{tahun}/belanja', [App\Http\Controllers\HomeController::class, 'anggaranBelanja'])->name('anggaran.belanja');
 Route::get('/anggaran/{tahun}/pendapatan', [App\Http\Controllers\HomeController::class, 'anggaranPendapatan'])->name('anggaran.pendapatan');
 
@@ -82,7 +82,8 @@ Route::get('/anggaran/{tahun}', function ($tahun) {
 
 Auth::routes(['register' => false]);
 
-Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('index');
+Route::post('/home', [App\Http\Controllers\HomeController::class, 'pilihDesa'])->name('pilihDesa');
 Route::get("/about", [App\Http\Controllers\HomeController::class, 'about'])->name('about');
 
 Route::middleware(['auth'])->prefix('master')->group(function () {

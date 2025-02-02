@@ -86,7 +86,7 @@
         {{-- deskripsi --}}
       Menampilkan rincian anggaran kegiatan yang ada di desa.
     </p>
-    <select class="form-select" id="tahun" onchange="window.location.href = '/anggaran/' + this.value + '/kegiatan'">
+    <select class="form-select" id="tahun" onchange="window.location.href = '/anggaran/' + this.value + '/kegiatan?desa=' + '{{ request('desa') }}'">
       @foreach($tahunAll as $tahun)
           <option value="{{ $tahun }}" {{ $tahun == $tahunSelected ? 'selected' : '' }}>{{ $tahun }}</option>
       @endforeach
