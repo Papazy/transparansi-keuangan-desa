@@ -4,9 +4,8 @@
         <!--- Sidemenu -->
         <div id="sidebar-menu">
             <ul>
-
+                @if(Auth::user()->role == 'superadmin')
                 <li class="menu-title">{{ __('Master Data') }}</li>
-
                 <!-- Menu Info Desa -->
                 <li class="has_sub">
                     <a href="javascript:void(0);" class="waves-effect">
@@ -41,10 +40,9 @@
                         </li>
                     </ul>
                 </li>
-
+                @endif
 
                 <li class="menu-title">{{ __('Menu Desa') }}</li>
-
                 <!-- Menu Info Desa -->
                 <li class="has_sub">
                     <a href="javascript:void(0);" class="waves-effect">

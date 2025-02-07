@@ -151,11 +151,9 @@
                 </li>
               </ul>
             </li>
-            <li class="nav-item mr-4">
+            {{-- <li class="nav-item mr-4">
               <a class="nav-link" href="{{ '/about?desa=' . ($desa ?? '') }}" style="color: white;">Tentang Desa</a>
-
-
-            </li>
+            </li> --}}
             <li class="nav-item login" style="border: 1px solid white; border-radius: 20px; padding: 2px 15px;">
               <a class="nav-link" href="{{ route('login') }}" style="color: white;">{{ __('auth.login') }}</a>
             </li>
